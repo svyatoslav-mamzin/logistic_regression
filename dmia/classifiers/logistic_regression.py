@@ -34,7 +34,7 @@ class LogisticRegression:
 
         # Run stochastic gradient descent to optimize W
         self.loss_history = []
-        for it in xrange(num_iters):
+        for it in range(num_iters):
             #########################################################################
             # TODO:                                                                 #
             # Sample batch_size elements from the training data and their           #
@@ -47,6 +47,9 @@ class LogisticRegression:
             # replacement is faster than sampling without replacement.              #
             #########################################################################
 
+            rand_idx = np.random.choice(num_train, batch_size, replace=True)
+            X_batch = X[rand_idx]
+            y_batch = y[rand_idx]
 
             #########################################################################
             #                       END OF YOUR CODE                                #
@@ -61,13 +64,14 @@ class LogisticRegression:
             # Update the weights using the gradient and the learning rate.          #
             #########################################################################
 
+            self.w -= learning_rate * gradW
 
             #########################################################################
             #                       END OF YOUR CODE                                #
             #########################################################################
 
             if verbose and it % 100 == 0:
-                print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
+                print('iteration %d / %d: loss %f' % (it, num_iters, loss))
 
         return self
 
@@ -92,7 +96,9 @@ class LogisticRegression:
         # Hint: It might be helpful to use np.vstack and np.sum                   #
         ###########################################################################
 
+        y_predictions = self.nn(X, self.w)
 
+        y_proba = np.vstack((1-y_predictions, y_predictions)).T
 
         ###########################################################################
         #                           END OF YOUR CODE                              #
@@ -116,8 +122,9 @@ class LogisticRegression:
         # TODO:                                                                   #
         # Implement this method. Store the predicted labels in y_pred.            #
         ###########################################################################
+
         y_proba = self.predict_proba(X, append_bias=True)
-        y_pred = ...
+        y_pred = np.argmax(y_proba, axis=1)
 
         ###########################################################################
         #                           END OF YOUR CODE                              #
@@ -134,21 +141,48 @@ class LogisticRegression:
         - loss as single float
         - gradient with respect to weights w; an array of same shape as w
         """
+
         dw = np.zeros_like(self.w)  # initialize the gradient as zero
         loss = 0
+
         # Compute loss and gradient. Your code should not contain python loops.
 
+        y_predictions = self.nn(X_batch, self.w)
+
+        loss = - np.sum(y_batch * np.log(y_predictions) + (1.0 - y_batch) * np.log(1.0 - y_predictions))
+
+        dw = self.gradient(self.w, X_batch, y_batch)
 
         # Right now the loss is a sum over all training examples, but we want it
         # to be an average instead so we divide by num_train.
         # Note that the same thing must be done with gradient.
+        # print 'loss : ' + str(loss)
 
+        num_train = X_batch.shape[0]
+
+        dw /= num_train
+        loss /= num_train
 
         # Add regularization to the loss and gradient.
         # Note that you have to exclude bias term in regularization.
 
+        loss += reg * np.sum(self.w[:-1] ** 2)
+        dw[:-1] += reg * self.w[:-1]
 
         return loss, dw
+
+    def nn(self, x, w):
+        """Define the neural network function y = 1 / (1 + numpy.exp(-x*w))"""
+        return self.logistic(x.dot(w.T))
+
+    def gradient(self, w, x, t):
+        """Define the gradient function"""
+        return (self.nn(x, w) - t).T * x
+
+    @staticmethod
+    def logistic(z):
+        """Define the logistic function"""
+        return 1.0 / (1.0 + np.exp(-z))
 
     @staticmethod
     def append_biases(X):
